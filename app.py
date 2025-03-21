@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify, make_response
+from flask import Flask...from flask_cors import CORS, request, send_file, jsonify, make_response
 from flask_cors import CORS
 import os
 import tempfile
@@ -9,7 +9,7 @@ from pydub import AudioSegment
 import logging
 import subprocess
 
-app = Flask(__name__)
+app = Flask(__name__)CORS(app, resources={r"/api/*": {"origins": "https://karrotts69.github.io"}})
 CORS(app, resources={r"/api/*": {"origins": os.getenv("ALLOWED_ORIGINS", "*")}})
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
