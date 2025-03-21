@@ -1,4 +1,4 @@
-from flask import Flask...from flask_cors import CORS, request, send_file, jsonify, make_response
+from flask import Flask, request, send_file, jsonify, make_response
 from flask_cors import CORS
 import os
 import tempfile
@@ -9,8 +9,10 @@ from pydub import AudioSegment
 import logging
 import subprocess
 
-app = Flask(__name__)CORS(app, resources={r"/api/*": {"origins": "https://karrotts69.github.io"}})
-CORS(app, resources={r"/api/*": {"origins": os.getenv("ALLOWED_ORIGINS", "*")}})
+app = Flask(__name__)
+# Single CORS configuration allowing GitHub Pages origin
+CORS(app, resources={r"/api/*": {"origins": "https://karrotts69.github.io"}})
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -67,9 +69,8 @@ def process_audio():
         processed_y = y + bass + drums
 
         # Basic audio analysis
-        tempo, _ = librosa.beat.tempo(y, sr=sr)
-        # Key detection is complex; placeholder for now
-        key = "C Major"  # Replace with actual key detection if desired
+        tempo, _ = librosa.beat.tempo(y=y, sr=sr)  # Updated syntax for librosa
+        key = "C Major"  # Placeholder; replace with actual key detection if desired
 
         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_wav:
             temp_wav_path = tmp_wav.name
@@ -91,8 +92,7 @@ def process_audio():
         os.remove(input_path)
         logger.info(f"Sending file: {output_path}")
         response = make_response(send_file(output_path, mimetype=mime_type))
-        response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
-        response.headers['X-Tempo'] = str(tempo)  # Custom header for analysis
+        response.headers['X-Tempo'] = str(tempo)
         response.headers['X-Key'] = key
         os.remove(output_path)
         return response
