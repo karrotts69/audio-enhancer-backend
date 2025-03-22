@@ -45,14 +45,17 @@ def process_audio():
             input_path = tmp.name
             logger.info(f"Saving file to {input_path}")
             file.save(input_path)
+            file_size = os.path.getsize(input_path) / (1024 * 1024)  # Size in MB
+            logger.info(f"File size: {file_size:.2f} MB")
 
         logger.info("Loading audio")
         try:
-            y, sr = librosa.load(input_path, sr=None)
+            # Load audio with a duration limit to reduce memory usage (e.g., first 30 seconds)
+            y, sr = librosa.load(input_path, sr=None, duration=30.0)
             logger.info(f"Audio loaded: length={len(y)}, sample rate={sr}")
         except librosa.LibrosaError as e:
             logger.warning(f"Librosa failed: {e}. Falling back to pydub")
-            audio = AudioSegment.from_file(input_path)
+            audio = AudioSegment.from_file(input_path)[:30*1000]  # First 30 seconds
             with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as wav_tmp:
                 wav_path = wav_tmp.name
                 audio.export(wav_path, format="wav")
@@ -68,14 +71,10 @@ def process_audio():
                 drum_intensity * np.random.normal(0, 0.05, len(y))
         processed_y = y + bass + drums
 
-        try:
-            tempo, _ = librosa.beat.tempo(y=y, sr=sr)
-            logger.info(f"Tempo calculated: {tempo}")
-        except Exception as e:
-            logger.error(f"Tempo calculation failed: {e}")
-            tempo = 120  # Fallback
-
-        key = "C Major"  # Placeholder
+        # Skip tempo calculation for now to save memory
+        tempo = 120  # Fallback
+        logger.info(f"Using fallback tempo: {tempo}")
+        key = "C Major"
 
         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_wav:
             temp_wav_path = tmp_wav.name
