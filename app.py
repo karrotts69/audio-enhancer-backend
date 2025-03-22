@@ -34,8 +34,8 @@ def process_audio():
         file = request.files['file']
         drum_style = request.form.get('drumStyle', 'rock')
         bass_style = request.form.get('bassStyle', 'fingered')
-        drum_intensity = float(request.form.get('drumIntensity', '50')) / 100
-        bass_intensity = float(request.form.get('bassIntensity', '50')) / 100
+        drum_intensity = float(request.form.get('drumIntensity', '50')) / 100  # 0 to 1 scale
+        bass_intensity = float(request.form.get('bassIntensity', '50')) / 100  # 0 to 1 scale
 
         if not file.filename.endswith(('.mp3', '.wav')):
             logger.error(f"Invalid file type: {file.filename}")
@@ -45,17 +45,16 @@ def process_audio():
             input_path = tmp.name
             logger.info(f"Saving file to {input_path}")
             file.save(input_path)
-            file_size = os.path.getsize(input_path) / (1024 * 1024)  # Size in MB
+            file_size = os.path.getsize(input_path) / (1024 * 1024)
             logger.info(f"File size: {file_size:.2f} MB")
 
         logger.info("Loading audio")
         try:
-            # Load audio with a duration limit to reduce memory usage (e.g., first 30 seconds)
             y, sr = librosa.load(input_path, sr=None, duration=30.0)
             logger.info(f"Audio loaded: length={len(y)}, sample rate={sr}")
         except librosa.LibrosaError as e:
             logger.warning(f"Librosa failed: {e}. Falling back to pydub")
-            audio = AudioSegment.from_file(input_path)[:30*1000]  # First 30 seconds
+            audio = AudioSegment.from_file(input_path)[:30*1000]
             with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as wav_tmp:
                 wav_path = wav_tmp.name
                 audio.export(wav_path, format="wav")
@@ -66,12 +65,16 @@ def process_audio():
         logger.info("Processing audio")
         t = np.linspace(0, len(y) / sr, len(y))
         bass_freq = 60 if bass_style == "fingered" else 40
-        bass = bass_intensity * np.sin(2 * np.pi * bass_freq * t)
-        drums = drum_intensity * np.random.normal(0, 0.1, len(y)) if drum_style == "rock" else \
-                drum_intensity * np.random.normal(0, 0.05, len(y))
+        # Increase amplitude (e.g., 0.5 -> 5.0) and log values
+        bass = bass_intensity * 5.0 * np.sin(2 * np.pi * bass_freq * t)
+        drums = drum_intensity * 5.0 * np.random.normal(0, 0.1, len(y)) if drum_style == "rock" else \
+                drum_intensity * 5.0 * np.random.normal(0, 0.05, len(y))
+        logger.info(f"Bass intensity: {bass_intensity}, max amplitude: {np.max(np.abs(bass)):.2f}")
+        logger.info(f"Drum intensity: {drum_intensity}, max amplitude: {np.max(np.abs(drums)):.2f}")
         processed_y = y + bass + drums
+        # Normalize to prevent clipping
+        processed_y = np.clip(processed_y, -1.0, 1.0)
 
-        # Skip tempo calculation for now to save memory
         tempo = 120  # Fallback
         logger.info(f"Using fallback tempo: {tempo}")
         key = "C Major"
